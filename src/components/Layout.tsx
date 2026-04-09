@@ -2,24 +2,66 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, LogOut, Bell } from 'lucide-react'
 import keycloak from '@/lib/keycloak/client'
-import { getUser, KeycloakUser } from '@/lib/keycloak/authService'
+import { getUser } from '@/lib/keycloak/authService'
+import { getCurrentSupabaseUser, getAuthProvider, clearAuthProvider, supabase } from '@/lib/supabase/authService'
+
+interface AppUser {
+  id: string
+  email: string
+  fullName: string
+  role: string
+  provider: 'supabase' | 'keycloak'
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation()
-  const [user, setUser] = useState<KeycloakUser | null>(null)
+  const [user, setUser] = useState<AppUser | null>(null)
 
   useEffect(() => {
     const fetchUser = async () => {
-      const userData = await getUser()
-      setUser(userData)
+      const provider = getAuthProvider()
+
+      if (provider === 'supabase') {
+        const supabaseUser = await getCurrentSupabaseUser()
+        if (supabaseUser) {
+          setUser({
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            fullName: supabaseUser.fullName,
+            role: supabaseUser.role,
+            provider: 'supabase',
+          })
+        }
+      } else if (provider === 'keycloak') {
+        const keycloakUser = await getUser()
+        if (keycloakUser) {
+          setUser({
+            id: keycloakUser.id,
+            email: keycloakUser.email,
+            fullName: keycloakUser.fullName,
+            role: keycloakUser.role,
+            provider: 'keycloak',
+          })
+        }
+      }
     }
     fetchUser()
   }, [])
 
-  const handleLogout = () => {
-    keycloak.logout({
-      redirectUri: window.location.origin + '/login'
-    })
+  const handleLogout = async () => {
+    const provider = getAuthProvider()
+
+    if (provider === 'supabase') {
+      await supabase.auth.signOut()
+    } else if (provider === 'keycloak') {
+      keycloak.logout({
+        redirectUri: window.location.origin + '/login'
+      })
+      return
+    }
+
+    clearAuthProvider()
+    window.location.href = '/login'
   }
 
   const userName = user?.fullName || user?.email?.split('@')[0] || 'User'

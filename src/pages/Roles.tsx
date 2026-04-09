@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Shield, Plus, X, Check, Users } from 'lucide-react'
-import { getUser, getUserRole, KeycloakUser } from '@/lib/keycloak/authService'
-import { fetchUsers, createUser as createKeycloakUser, updateUser, UserProfile } from '@/lib/keycloak/adminApi'
+import { getUser, getUserRole } from '@/lib/keycloak/authService'
+import { fetchSupabaseUsers, createSupabaseUser, updateSupabaseUser, getCurrentSupabaseUser, getAuthProvider, UserProfile } from '@/lib/supabase/authService'
 
 interface Role {
   id: string
@@ -18,7 +18,7 @@ const ROLES: Role[] = [
 ]
 
 export default function Roles() {
-  const [currentUser, setCurrentUser] = useState<KeycloakUser | null>(null)
+  const [currentRole, setCurrentRole] = useState<string>('internal')
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -30,13 +30,24 @@ export default function Roles() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userData = await getUser()
-        setCurrentUser(userData)
+        const provider = getAuthProvider()
 
-        const fetchedUsers = await fetchUsers()
-        if (fetchedUsers.length > 0) {
-          setUsers(fetchedUsers)
+        if (provider === 'supabase') {
+          const supabaseUser = await getCurrentSupabaseUser()
+          if (supabaseUser) {
+            setCurrentRole(supabaseUser.role)
+          }
+        } else if (provider === 'keycloak') {
+          const keycloakUser = await getUser()
+          if (keycloakUser) {
+            setCurrentRole(keycloakUser.role)
+          } else {
+            setCurrentRole(getUserRole())
+          }
         }
+
+        const fetchedUsers = await fetchSupabaseUsers()
+        setUsers(fetchedUsers)
       } catch (err) {
         console.error(err)
       } finally {
@@ -47,9 +58,9 @@ export default function Roles() {
   }, [])
 
   const updateUserRole = async (userId: string, newRole: string) => {
-    const result = await updateUser(userId, { role: newRole })
+    const result = await updateSupabaseUser(userId, { role: newRole })
     if (result.success) {
-      const refreshedUsers = await fetchUsers()
+      const refreshedUsers = await fetchSupabaseUsers()
       setUsers(refreshedUsers)
     }
     setEditingUser(null)
@@ -59,7 +70,7 @@ export default function Roles() {
     setError('')
     setCreating(true)
 
-    const result = await createKeycloakUser(
+    const result = await createSupabaseUser(
       newUser.email,
       newUser.password,
       newUser.full_name,
@@ -67,7 +78,7 @@ export default function Roles() {
     )
 
     if (result.success) {
-      const refreshedUsers = await fetchUsers()
+      const refreshedUsers = await fetchSupabaseUsers()
       setUsers(refreshedUsers)
       setShowCreateModal(false)
       setNewUser({ email: '', full_name: '', role: 'internal', password: '' })
@@ -97,7 +108,6 @@ export default function Roles() {
     return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin" /></div>
   }
 
-  const currentRole = currentUser?.role || getUserRole()
   const canManageRoles = currentRole === 'superadministrator' || currentRole === 'administrator'
 
   return (

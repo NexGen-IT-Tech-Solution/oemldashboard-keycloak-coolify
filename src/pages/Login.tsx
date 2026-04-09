@@ -1,35 +1,69 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldAlert, Loader2 } from 'lucide-react'
+import { ShieldAlert, Loader2, User, Lock, Key } from 'lucide-react'
 import keycloak from '@/lib/keycloak/client'
+import { supabase } from '@/lib/supabase/client'
+import { setAuthProvider, getAuthProvider } from '@/lib/supabase/authService'
 import logoImg from '@/assets/logos/OverAll.png'
 
 export default function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isKeycloakLoading, setIsKeycloakLoading] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const initAndCheckAuth = async () => {
-      try {
-        const authenticated = await keycloak.init({
-          onLoad: 'check-sso',
-          checkLoginIframe: false,
-        })
-
-        if (authenticated) {
+    const checkExistingSession = async () => {
+      const provider = getAuthProvider()
+      
+      if (provider === 'supabase') {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
           navigate('/dashboard', { replace: true })
+          return
         }
-      } catch (err) {
-        console.error('Keycloak init error:', err)
+      } else if (provider === 'keycloak') {
+        try {
+          const authenticated = await keycloak.init({
+            onLoad: 'check-sso',
+            checkLoginIframe: false,
+          })
+          if (authenticated) {
+            navigate('/dashboard', { replace: true })
+            return
+          }
+        } catch (err) {
+          console.error('Keycloak init error:', err)
+        }
       }
     }
-    initAndCheckAuth()
+    checkExistingSession()
   }, [navigate])
 
-  const handleLogin = async () => {
+  const handleSupabaseLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
     setError('')
-    setIsLoading(true)
+    setIsSubmitting(true)
+
+    const { error: supabaseError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    if (supabaseError) {
+      setError(supabaseError.message)
+      setIsSubmitting(false)
+    } else {
+      setAuthProvider('supabase')
+      navigate('/dashboard')
+    }
+  }
+
+  const handleKeycloakLogin = async () => {
+    setError('')
+    setIsKeycloakLoading(true)
 
     try {
       await keycloak.init({
@@ -38,9 +72,9 @@ export default function Login() {
       })
       keycloak.login()
     } catch (err) {
-      console.error('Login error:', err)
-      setError('Failed to connect to authentication server. Please try again.')
-      setIsLoading(false)
+      console.error('Keycloak login error:', err)
+      setError('Failed to connect to Keycloak. Please try again.')
+      setIsKeycloakLoading(false)
     }
   }
 
@@ -74,14 +108,74 @@ export default function Login() {
           </div>
         )}
 
+        <form onSubmit={handleSupabaseLogin} className="space-y-4 mb-4">
+          <div>
+            <label className="text-sm font-medium text-neutral-300 ml-1 block mb-1.5">Email</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-neutral-500">
+                <User className="w-5 h-5" />
+              </div>
+              <input
+                type="email"
+                className="w-full bg-neutral-950/50 border border-neutral-800 text-neutral-100 rounded-xl pl-12 p-3.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-neutral-300 ml-1 block mb-1.5">Password</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-neutral-500">
+                <Lock className="w-5 h-5" />
+              </div>
+              <input
+                type="password"
+                className="w-full bg-neutral-950/50 border border-neutral-800 text-neutral-100 rounded-xl pl-12 p-3.5 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none"
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-semibold rounded-xl py-3.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {isSubmitting ? (
+              <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Signing in...</>
+            ) : 'Sign In with Supabase'}
+          </button>
+        </form>
+
+        <div className="relative my-4">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-neutral-800"></div>
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-neutral-900/60 px-2 text-neutral-500">Or continue with</span>
+          </div>
+        </div>
+
         <button
-          onClick={handleLogin}
-          disabled={isLoading}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 text-emerald-950 font-semibold rounded-xl py-3.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center"
+          onClick={handleKeycloakLogin}
+          disabled={isKeycloakLoading}
+          className="w-full bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-100 font-medium rounded-xl py-3.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
-          {isLoading ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Connecting...</>
-          ) : 'Sign In to Dashboard'}
+          {isKeycloakLoading ? (
+            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Connecting to Keycloak...</>
+          ) : (
+            <>
+              <Key className="w-5 h-5" />
+              Sign In with Keycloak
+            </>
+          )}
         </button>
 
         <div className="mt-6 pt-4 border-t border-neutral-800 text-center space-y-2">

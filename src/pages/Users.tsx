@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, X, Edit3, Save, User, Mail, Shield, Activity } from 'lucide-react'
-import { getUser, KeycloakUser, getUserRole } from '@/lib/keycloak/authService'
-import { fetchUsers, updateUser, UserProfile } from '@/lib/keycloak/adminApi'
+import { getUser, getUserRole } from '@/lib/keycloak/authService'
+import { fetchSupabaseUsers, updateSupabaseUser, getCurrentSupabaseUser, getAuthProvider, UserProfile } from '@/lib/supabase/authService'
 
 interface EditFormData {
   full_name: string
@@ -30,7 +30,7 @@ const types = [
 ]
 
 export default function Users() {
-  const [currentUser, setCurrentUser] = useState<KeycloakUser | null>(null)
+  const [currentRole, setCurrentRole] = useState<string>('internal')
   const [users, setUsers] = useState<UserProfile[]>([])
   const [filteredUsers, setFilteredUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,13 +45,24 @@ export default function Users() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userData = await getUser()
-        setCurrentUser(userData)
-
-        const fetchedUsers = await fetchUsers()
-        if (fetchedUsers.length > 0) {
-          setUsers(fetchedUsers)
+        const provider = getAuthProvider()
+        
+        if (provider === 'supabase') {
+          const supabaseUser = await getCurrentSupabaseUser()
+          if (supabaseUser) {
+            setCurrentRole(supabaseUser.role)
+          }
+        } else if (provider === 'keycloak') {
+          const keycloakUser = await getUser()
+          if (keycloakUser) {
+            setCurrentRole(keycloakUser.role)
+          } else {
+            setCurrentRole(getUserRole())
+          }
         }
+
+        const fetchedUsers = await fetchSupabaseUsers()
+        setUsers(fetchedUsers)
       } catch (err) {
         console.error(err)
       } finally {
@@ -120,7 +131,7 @@ export default function Users() {
 
     setSaving(true)
 
-    const result = await updateUser(selectedUser.id, {
+    const result = await updateSupabaseUser(selectedUser.id, {
       full_name: editForm.full_name,
       role: editForm.role,
       status: editForm.status,
@@ -128,7 +139,7 @@ export default function Users() {
     })
 
     if (result.success) {
-      const refreshedUsers = await fetchUsers()
+      const refreshedUsers = await fetchSupabaseUsers()
       setUsers(refreshedUsers)
       setSelectedUser(null)
       setEditForm(null)
@@ -141,7 +152,6 @@ export default function Users() {
     return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin" /></div>
   }
 
-  const currentRole = currentUser?.role || getUserRole()
   const canEditUsers = currentRole === 'superadministrator' || currentRole === 'administrator'
 
   return (
