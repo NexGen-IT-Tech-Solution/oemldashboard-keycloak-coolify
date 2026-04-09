@@ -1,8 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import keycloak from '@/lib/keycloak/client'
 import { supabase } from '@/lib/supabase/client'
-import { getAuthProvider } from '@/lib/supabase/authService'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Users from './pages/Users'
@@ -24,25 +22,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const provider = getAuthProvider()
-
-      if (provider === 'supabase') {
-        const { data: { session } } = await supabase.auth.getSession()
-        setAuthenticated(!!session)
-      } else if (provider === 'keycloak') {
-        try {
-          const keycloakAuthenticated = await keycloak.init({
-            onLoad: 'check-sso',
-            checkLoginIframe: false,
-          })
-          setAuthenticated(keycloakAuthenticated || false)
-        } catch (error) {
-          console.error('Keycloak auth check failed:', error)
-          setAuthenticated(false)
-        }
-      } else {
-        setAuthenticated(false)
-      }
+      const { data: { session } } = await supabase.auth.getSession()
+      setAuthenticated(!!session)
       setLoading(false)
     }
     checkAuth()

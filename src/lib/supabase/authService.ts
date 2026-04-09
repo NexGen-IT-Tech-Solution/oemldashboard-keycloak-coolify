@@ -22,39 +22,6 @@ export interface UserProfile {
   created_at: string
 }
 
-const AUTH_PROVIDER_KEY = 'auth_provider'
-
-export const setAuthProvider = (provider: 'supabase' | 'keycloak') => {
-  localStorage.setItem(AUTH_PROVIDER_KEY, provider)
-}
-
-export const getAuthProvider = (): 'supabase' | 'keycloak' | null => {
-  return localStorage.getItem(AUTH_PROVIDER_KEY) as 'supabase' | 'keycloak' | null
-}
-
-export const clearAuthProvider = () => {
-  localStorage.removeItem(AUTH_PROVIDER_KEY)
-}
-
-export const loginWithSupabase = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-
-  if (error) {
-    return { success: false, error: error.message }
-  }
-
-  setAuthProvider('supabase')
-  return { success: true, user: data.user }
-}
-
-export const logoutFromSupabase = async () => {
-  await supabase.auth.signOut()
-  clearAuthProvider()
-}
-
 export const getCurrentSupabaseUser = async (): Promise<SupabaseUser | null> => {
   const { data: { user }, error } = await supabase.auth.getUser()
 
@@ -90,11 +57,6 @@ export const getCurrentSupabaseUser = async (): Promise<SupabaseUser | null> => 
     type: profile.type,
     created_at: profile.created_at,
   }
-}
-
-export const isAuthenticatedWithSupabase = async (): Promise<boolean> => {
-  const { data: { session } } = await supabase.auth.getSession()
-  return !!session
 }
 
 export const fetchSupabaseUsers = async (): Promise<UserProfile[]> => {

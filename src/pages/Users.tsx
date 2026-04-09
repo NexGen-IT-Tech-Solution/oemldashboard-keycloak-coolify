@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Search, X, Edit3, Save, User, Mail, Shield, Activity } from 'lucide-react'
-import { getUser, getUserRole } from '@/lib/keycloak/authService'
-import { fetchSupabaseUsers, updateSupabaseUser, getCurrentSupabaseUser, getAuthProvider, UserProfile } from '@/lib/supabase/authService'
+import { fetchSupabaseUsers, updateSupabaseUser, getCurrentSupabaseUser, UserProfile } from '@/lib/supabase/authService'
 
 interface EditFormData {
   full_name: string
@@ -45,20 +44,9 @@ export default function Users() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const provider = getAuthProvider()
-        
-        if (provider === 'supabase') {
-          const supabaseUser = await getCurrentSupabaseUser()
-          if (supabaseUser) {
-            setCurrentRole(supabaseUser.role)
-          }
-        } else if (provider === 'keycloak') {
-          const keycloakUser = await getUser()
-          if (keycloakUser) {
-            setCurrentRole(keycloakUser.role)
-          } else {
-            setCurrentRole(getUserRole())
-          }
+        const supabaseUser = await getCurrentSupabaseUser()
+        if (supabaseUser) {
+          setCurrentRole(supabaseUser.role)
         }
 
         const fetchedUsers = await fetchSupabaseUsers()

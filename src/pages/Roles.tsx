@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Shield, Plus, X, Check, Users } from 'lucide-react'
-import { getUser, getUserRole } from '@/lib/keycloak/authService'
-import { fetchSupabaseUsers, createSupabaseUser, updateSupabaseUser, getCurrentSupabaseUser, getAuthProvider, UserProfile } from '@/lib/supabase/authService'
+import { fetchSupabaseUsers, createSupabaseUser, updateSupabaseUser, getCurrentSupabaseUser, UserProfile } from '@/lib/supabase/authService'
 
 interface Role {
   id: string
@@ -30,20 +29,9 @@ export default function Roles() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const provider = getAuthProvider()
-
-        if (provider === 'supabase') {
-          const supabaseUser = await getCurrentSupabaseUser()
-          if (supabaseUser) {
-            setCurrentRole(supabaseUser.role)
-          }
-        } else if (provider === 'keycloak') {
-          const keycloakUser = await getUser()
-          if (keycloakUser) {
-            setCurrentRole(keycloakUser.role)
-          } else {
-            setCurrentRole(getUserRole())
-          }
+        const supabaseUser = await getCurrentSupabaseUser()
+        if (supabaseUser) {
+          setCurrentRole(supabaseUser.role)
         }
 
         const fetchedUsers = await fetchSupabaseUsers()

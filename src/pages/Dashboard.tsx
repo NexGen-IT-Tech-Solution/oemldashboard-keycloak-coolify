@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Clock, ExternalLink, Info } from 'lucide-react'
-import { getUser } from '@/lib/keycloak/authService'
-import { getCurrentSupabaseUser, getAuthProvider, supabase as supabaseClient } from '@/lib/supabase/authService'
+import { getCurrentSupabaseUser, supabase } from '@/lib/supabase/authService'
 import oemlLogo from '@/assets/logos/OEML.png'
 import opvtLogo from '@/assets/logos/OPVT.png'
 import asalLogo from '@/assets/logos/ASAL.png'
@@ -78,29 +77,14 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const provider = getAuthProvider()
-
-        if (provider === 'supabase') {
-          const supabaseUser = await getCurrentSupabaseUser()
-          if (supabaseUser) {
-            setCurrentUser({
-              id: supabaseUser.id,
-              email: supabaseUser.email,
-              fullName: supabaseUser.fullName,
-              role: supabaseUser.role,
-            })
-          }
-        } else if (provider === 'keycloak') {
-          const keycloakUser = await getUser()
-          if (keycloakUser) {
-            await ensureSupabaseProfile(keycloakUser)
-            setCurrentUser({
-              id: keycloakUser.id,
-              email: keycloakUser.email,
-              fullName: keycloakUser.fullName,
-              role: keycloakUser.role,
-            })
-          }
+        const supabaseUser = await getCurrentSupabaseUser()
+        if (supabaseUser) {
+          setCurrentUser({
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            fullName: supabaseUser.fullName,
+            role: supabaseUser.role,
+          })
         }
       } catch (err: any) {
         console.error(err)
@@ -110,27 +94,6 @@ export default function Dashboard() {
     }
     fetchUser()
   }, [])
-
-  const ensureSupabaseProfile = async (keycloakUser: { id: string; email: string; fullName: string; role: string }) => {
-    const { data: existingProfile } = await supabaseClient
-      .from('profiles')
-      .select('*')
-      .eq('id', keycloakUser.id)
-      .eq('app_id', 'oemldashboard')
-      .single()
-
-    if (!existingProfile) {
-      await supabaseClient.from('profiles').insert({
-        id: keycloakUser.id,
-        app_id: 'oemldashboard',
-        email: keycloakUser.email,
-        full_name: keycloakUser.fullName,
-        role: keycloakUser.role,
-        status: 'active',
-        type: 'internal',
-      })
-    }
-  }
 
   if (loading) {
     return <div className="flex h-full items-center justify-center"><div className="w-8 h-8 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin" /></div>

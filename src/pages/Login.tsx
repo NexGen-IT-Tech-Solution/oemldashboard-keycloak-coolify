@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ShieldAlert, Loader2, User, Lock, Key } from 'lucide-react'
-import keycloak from '@/lib/keycloak/client'
+import { ShieldAlert, Loader2, User, Lock } from 'lucide-react'
 import { supabase } from '@/lib/supabase/client'
-import { setAuthProvider, getAuthProvider } from '@/lib/supabase/authService'
 import logoImg from '@/assets/logos/OverAll.png'
 
 export default function Login() {
@@ -11,38 +9,19 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isKeycloakLoading, setIsKeycloakLoading] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
     const checkExistingSession = async () => {
-      const provider = getAuthProvider()
-      
-      if (provider === 'supabase') {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
-          navigate('/dashboard', { replace: true })
-          return
-        }
-      } else if (provider === 'keycloak') {
-        try {
-          const authenticated = await keycloak.init({
-            onLoad: 'check-sso',
-            checkLoginIframe: false,
-          })
-          if (authenticated) {
-            navigate('/dashboard', { replace: true })
-            return
-          }
-        } catch (err) {
-          console.error('Keycloak init error:', err)
-        }
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        navigate('/dashboard', { replace: true })
       }
     }
     checkExistingSession()
   }, [navigate])
 
-  const handleSupabaseLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setIsSubmitting(true)
@@ -56,25 +35,7 @@ export default function Login() {
       setError(supabaseError.message)
       setIsSubmitting(false)
     } else {
-      setAuthProvider('supabase')
       navigate('/dashboard')
-    }
-  }
-
-  const handleKeycloakLogin = async () => {
-    setError('')
-    setIsKeycloakLoading(true)
-
-    try {
-      await keycloak.init({
-        onLoad: 'login-required',
-        checkLoginIframe: false,
-      })
-      keycloak.login()
-    } catch (err) {
-      console.error('Keycloak login error:', err)
-      setError('Failed to connect to Keycloak. Please try again.')
-      setIsKeycloakLoading(false)
     }
   }
 
@@ -108,7 +69,7 @@ export default function Login() {
           </div>
         )}
 
-        <form onSubmit={handleSupabaseLogin} className="space-y-4 mb-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-medium text-neutral-300 ml-1 block mb-1.5">Email</label>
             <div className="relative">
@@ -150,33 +111,9 @@ export default function Login() {
           >
             {isSubmitting ? (
               <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Signing in...</>
-            ) : 'Sign In with Supabase'}
+            ) : 'Sign In'}
           </button>
         </form>
-
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-neutral-800"></div>
-          </div>
-          <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-neutral-900/60 px-2 text-neutral-500">Or continue with</span>
-          </div>
-        </div>
-
-        <button
-          onClick={handleKeycloakLogin}
-          disabled={isKeycloakLoading}
-          className="w-full bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-100 font-medium rounded-xl py-3.5 transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {isKeycloakLoading ? (
-            <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Connecting to Keycloak...</>
-          ) : (
-            <>
-              <Key className="w-5 h-5" />
-              Sign In with Keycloak
-            </>
-          )}
-        </button>
 
         <div className="mt-6 pt-4 border-t border-neutral-800 text-center space-y-2">
           <a 
