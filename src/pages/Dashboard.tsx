@@ -7,6 +7,7 @@ import opvtLogo from '@/assets/logos/OPVT.png'
 import asalLogo from '@/assets/logos/ASAL.png'
 import pipesizeLogo from '@/assets/logos/pipesize.png'
 import nexgenLogo from '@/assets/logos/metabase.png'
+import testInstanceLogo from '@/assets/logos/testing-logo.jpg'
 
 interface TimeZone {
   name: string
@@ -32,6 +33,7 @@ const logoMap: { [key: string]: string } = {
   'asal': asalLogo,
   'pipesize': pipesizeLogo,
   'nexgenbi': nexgenLogo,
+  'testinstance': testInstanceLogo,
 }
 
 const defaultPortals: Portal[] = [
@@ -40,6 +42,7 @@ const defaultPortals: Portal[] = [
   { id: 'asal', name: 'ASAL', url: 'https://nexerp.alasayel.om' },
   { id: 'pipesize', name: 'Pipe Size', url: 'https://oemldxb-my.sharepoint.com/:b:/g/personal/itsupport_oeml_ae/IQBtVVNoDk7BSYdG63oTHEabAUJ4OoNQmsRBJ1a5TD0mLsc?e=eihZlK' },
   { id: 'nexgenbi', name: 'NexGen BI', url: 'https://nexgen-bi.nexgenitech.link/' },
+  { id: 'testinstance', name: 'Test Instance', url: 'https://oemltd.u.frappe.cloud/app' },
 ]
 
 const timeZones: TimeZone[] = [
